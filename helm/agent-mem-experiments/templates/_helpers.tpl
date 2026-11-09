@@ -36,3 +36,26 @@ Selector labels
 app.kubernetes.io/name: {{ include "name" . | quote }}
 app.kubernetes.io/instance: {{ .Release.Name | quote }}
 {{- end -}}
+
+{{/*
+Per-component helpers. Call with (dict "root" $ "component" "agentmemory").
+The chart is installed once per component (agentmemory, cartographer), so a
+release usually carries the component's name: use it as is then.
+*/}}
+{{- define "agent-mem.fullname" -}}
+{{- if contains .component .root.Release.Name -}}
+{{- .root.Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .root.Release.Name .component | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "agent-mem.labels" -}}
+{{ include "labels.common" .root }}
+app.kubernetes.io/component: {{ .component | quote }}
+{{- end -}}
+
+{{- define "agent-mem.selectorLabels" -}}
+{{ include "labels.selector" .root }}
+app.kubernetes.io/component: {{ .component | quote }}
+{{- end -}}

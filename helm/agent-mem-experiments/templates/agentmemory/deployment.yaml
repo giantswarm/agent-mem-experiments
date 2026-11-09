@@ -1,0 +1,186 @@
+{{- if .Values.agentmemory.enabled }}
+{{- $ctx := dict "root" $ "component" "agentmemory" }}
+{{- $fullname := include "agent-mem.fullname" $ctx }}
+{{- $am := .Values.agentmemory }}
+{{- if not (or $am.secret.existingSecret $am.secret.create) }}
+{{- fail "agentmemory: set secret.existingSecret (or secret.create for CI)" }}
+{{- end }}
+{{- $secretName := $am.secret.existingSecret | default $fullname }}
+{{- $usesGemini := or (eq $am.llmProvider "gemini") (eq $am.embeddingProvider "gemini") }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "agent-mem.labels" $ctx | nindent 4 }}
+spec:
+  replicas: {{ $am.replicaCount }}
+  # Single writer on a RWO volume: never run two pods at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "agent-mem.selectorLabels" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "agent-mem.selectorLabels" $ctx | nindent 8 }}
+        {{- with $am.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/runtime-config: {{ include (print $.Template.BasePath "/agentmemory/configmap.yaml") . | sha256sum }}
+        {{- with $am.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ $fullname }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      {{- with $am.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml $am.podSecurityContext | nindent 8 }}
+      {{- if $am.valkey.enabled }}
+      initContainers:
+        # Native sidecar (restartPolicy: Always): ready before agentmemory starts,
+        # stopped after it. Loopback only, AOF on the shared volume.
+        - name: valkey
+          {{- with $am.valkey.image }}
+          image: "{{ .registry }}/{{ .name }}:{{ .tag }}"
+          imagePullPolicy: {{ .pullPolicy }}
+          {{- end }}
+          restartPolicy: Always
+          command:
+            - valkey-server
+            - --bind
+            - 127.0.0.1
+            - --port
+            - "6379"
+            - --protected-mode
+            - "yes"
+            - --dir
+            - /data
+            - --dbfilename
+            - valkey-dump.rdb
+            - --appendonly
+            - "yes"
+            - --appenddirname
+            - valkey-aof
+            - --maxmemory-policy
+            - noeviction
+          startupProbe:
+            exec:
+              command: ["valkey-cli", "-h", "127.0.0.1", "ping"]
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            exec:
+              command: ["valkey-cli", "-h", "127.0.0.1", "ping"]
+            periodSeconds: 20
+          securityContext:
+            {{- toYaml $am.valkey.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml $am.valkey.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- end }}
+      containers:
+        - name: agentmemory
+          {{- with $am.image }}
+          image: "{{ .registry }}/{{ .name }}:{{ .tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ .pullPolicy }}
+          {{- end }}
+          # iii compose in the foreground (see the runtime ConfigMap).
+          command: ["/bin/sh", "/etc/agentmemory/start.sh"]
+          workingDir: /data
+          # Only what start.sh and the compose interpolation need; every other
+          # setting is in the Worker Compose manifest.
+          env:
+            - name: AGENTMEMORY_DATA_DIR
+              value: /data
+            - name: HOME
+              value: /home/node
+            - name: III_TELEMETRY_ENABLED
+              value: "false"
+            - name: AGENTMEMORY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: AGENTMEMORY_SECRET
+            {{- if $usesGemini }}
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: GEMINI_API_KEY
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 3111
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /agentmemory/livez
+              port: http
+            periodSeconds: 5
+            failureThreshold: 72
+          readinessProbe:
+            httpGet:
+              path: /agentmemory/livez
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /agentmemory/livez
+              port: http
+            periodSeconds: 30
+            failureThreshold: 4
+          securityContext:
+            {{- toYaml $am.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml $am.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: runtime-config
+              mountPath: /etc/agentmemory
+              readOnly: true
+            - name: home
+              mountPath: /home/node
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          {{- if $am.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ $am.persistence.existingClaim | default $fullname }}
+          {{- else }}
+          emptyDir:
+            sizeLimit: {{ $am.persistence.size }}
+          {{- end }}
+        - name: runtime-config
+          configMap:
+            name: {{ $fullname }}-runtime
+        - name: home
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+      {{- with $am.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $am.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $am.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

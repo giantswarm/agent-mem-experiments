@@ -1,0 +1,37 @@
+# Approved sample of giantswarm/agent-memory for the PoC import.
+# One repo-relative path per line; blank lines and lines starting with '#' are ignored.
+# Every path was screened as free of customer names. Never add anything under
+# customers/ or people/ (import.py refuses those paths even if listed here).
+company/app-term-deprecation.md
+company/closed-teams.md
+company/customer-names-out-of-public-repos.md
+company/gh-repo-create-needs-private-not-internal.md
+company/giantswarm-claude-code-marketplace.md
+company/giantswarm-marp-theme.md
+company/team-ownership.md
+topics/alloy-journal-relabel.md
+topics/app-cr-to-helmrelease-migration.md
+topics/compose-skills-dont-inline.md
+topics/dev-workflow-gotchas.md
+topics/devctl-local-setup.md
+topics/docker-multiarch-build-speedup.md
+topics/envoy-gateway-websocket-useclientprotocol.md
+topics/flux-multi-tenancy-giantswarm.md
+topics/giantswarm-docs-tooling.md
+topics/kyverno-pss-debug-pods.md
+topics/muster-workflow-authoring-gotchas.md
+topics/skill-dryrun-clean-context.md
+topics/subagent-fanout-patterns.md
+teams/bumblebee/agent-platform-chart.md
+teams/bumblebee/backend-auth-decision-rule.md
+teams/bumblebee/backstage-customer-gitops-deployment.md
+teams/bumblebee/backstage-nfs-page-layout.md
+teams/bumblebee/happa-startup-probe.md
+teams/bumblebee/mcp-oauth-token-model.md
+teams/bumblebee/muster-topology.md
+teams/bumblebee/team-overview.md
+teams/honeybadger/aliyun-registry-constraints.md
+teams/honeybadger/artifacthub-strategy.md
+teams/honeybadger/mission.md
+teams/cabbage/mission.md
+teams/planeteers/muster-skill-workflows.md

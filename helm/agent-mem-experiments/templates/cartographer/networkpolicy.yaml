@@ -1,0 +1,49 @@
+{{- if .Values.cartographer.enabled }}
+{{- $n := .Values.cartographer.networkPolicy }}
+{{- if $n.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "agent-mem.fullname" (dict "root" $ "component" "cartographer") }}
+  labels:
+    {{- include "agent-mem.labels" (dict "root" $ "component" "cartographer") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "agent-mem.selectorLabels" (dict "root" $ "component" "cartographer") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- range $n.ingressNamespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . | quote }}
+        {{- end }}
+      ports:
+        - port: 39273
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Git remote: SSH (22) and HTTPS (443).
+    - to:
+        {{- range $n.egressCIDRs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+      ports:
+        {{- range $n.egressPorts }}
+        - port: {{ . }}
+          protocol: TCP
+        {{- end }}
+{{- end }}
+{{- end }}

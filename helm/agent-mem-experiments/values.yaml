@@ -1,12 +1,297 @@
-# This file is a Helm values file for the agent-mem-experiments chart.
+# Values for the agent-mem-experiments chart: a PoC of shared agent memory
+# servers. The chart holds one component per server and is installed once per
+# component (release `agentmemory` with agentmemory.enabled=true, release
+# `cartographer` with cartographer.enabled=true). Both are off by default.
 #
 # To learn more about how to configure your app on your cluster
 # and override the default values in here, visit:
 #
 #   https://docs.giantswarm.io/tutorials/fleet-management/app-platform/app-configuration/#basic-values-merging-example
-#
-image:
-  name: "giantswarm/agent-mem-experiments"
-  tag: ""
-registry:
-  domain: gsoci.azurecr.io
+
+# Shared by every component.
+gateway:
+  # @schema itemRequired: [name]; itemProperties: {name: {type: string}, namespace: {type: string}, sectionName: {type: string}, port: {type: integer}, group: {type: string}, kind: {type: string}}
+  # -- Gateway API parent references for the components' HTTPRoutes.
+  parentRefs:
+    - name: giantswarm-default
+      namespace: envoy-gateway-system
+      sectionName: https
+
+# agentmemory 0.9.32 (https://github.com/rohitg00/agentmemory): iii Worker Compose
+# runtime with a Valkey native sidecar. Install as release `agentmemory`.
+agentmemory:
+  # -- Render the agentmemory component.
+  enabled: false
+
+  # -- agentmemory image, built from the root Dockerfile.
+  image:
+    registry: gsoci.azurecr.io
+    name: giantswarm/agent-mem-experiments
+    # -- Defaults to the chart's appVersion.
+    tag: ""
+    pullPolicy: IfNotPresent  # @schema enum: [Always, IfNotPresent, Never]
+  imagePullSecrets: []  # @schema itemRef: $k8s/_definitions.json#/definitions/io.k8s.api.core.v1.LocalObjectReference
+
+  # -- Single writer on a ReadWriteOnce volume: 0 or 1.
+  replicaCount: 1  # @schema minimum: 0; maximum: 1
+
+  # -- Team scope (server-wide; every share is recorded as userId). "" disables team mode.
+  teamId: gs-ai-test
+  userId: shared
+  # -- LLM provider: gemini, or "" for none (no summaries, compression, consolidation).
+  # A key alone does not enable a provider since 0.9.32.
+  llmProvider: gemini  # @schema enum: ["", gemini]
+  # -- Embedding provider: gemini (768 dims), or "" for BM25 + graph only.
+  embeddingProvider: gemini  # @schema enum: ["", gemini]
+  gemini:
+    model: gemini-3.7-flash
+  autoCompress: true
+  injectContext: true
+  consolidation: false
+  graphExtraction: false
+  # -- MCP tool surface for every client: all or core (8 tools). Decided on the server.
+  tools: all  # @schema enum: [all, core]
+  # @schema item: object; itemRequired: [name, value]; itemProperties: {name: {type: string, pattern: "^[A-Za-z_][A-Za-z0-9_]*$"}, value: {type: string}}
+  # -- Extra plain env for the agentmemory worker, written into the compose manifest.
+  # Secrets do not belong here.
+  extraEnv: []
+
+  # Secret with AGENTMEMORY_SECRET (REST/MCP bearer token) and GEMINI_API_KEY.
+  secret:
+    # -- Name of an existing Secret (production; created from SOPS in workload-clusters-fleet).
+    existingSecret: ""
+    # -- Render the Secret from the values below. CI and tests only.
+    create: false
+    agentmemorySecret: ""
+    geminiApiKey: ""
+
+  # -- Paths inside the image (root Dockerfile).
+  runtime:
+    workerBinDir: /opt/iii-workers
+    packageDir: /opt/agentmemory/node_modules/@agentmemory/agentmemory
+    nodeBin: /usr/local/bin/node
+
+  # Valkey as a native sidecar on 127.0.0.1:6379 (agentmemory speaks plain redis://).
+  # false uses the engine's file store on the volume.
+  valkey:
+    enabled: true
+    # -- Third-party image (Docker Hub), not built or mirrored by Giant Swarm.
+    # Pin the full patch version; 8.1-alpine is a moving tag.
+    image:
+      registry: docker.io
+      name: valkey/valkey
+      tag: "8.1.11-alpine"
+      pullPolicy: IfNotPresent  # @schema enum: [Always, IfNotPresent, Never]
+    resources:  # @schema $ref: $k8s/_definitions.json#/definitions/io.k8s.api.core.v1.ResourceRequirements
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 512Mi
+    # -- Runs as the image's valkey user (UID 999).
+    securityContext:
+      allowPrivilegeEscalation: false  # @schema const: false
+      privileged: false  # @schema const: false
+      runAsNonRoot: true  # @schema const: true
+      runAsUser: 999  # @schema minimum: 1
+      runAsGroup: 1000
+      readOnlyRootFilesystem: true  # @schema const: true
+      capabilities:
+        drop:  # @schema item: string; minItems: 1
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault  # @schema enum: [RuntimeDefault, Localhost]
+
+  persistence:
+    enabled: true
+    # -- "" uses the cluster default (gp3).
+    storageClassName: ""
+    accessMode: ReadWriteOnce  # @schema enum: [ReadWriteOnce, ReadWriteOncePod]
+    size: 5Gi
+    # -- Use an existing PVC instead of creating one.
+    existingClaim: ""
+
+  service:
+    port: 3111
+
+  # -- Gateway API HTTPRoute for /agentmemory on gateway.parentRefs.
+  httpRoute:
+    enabled: true
+    hostnames:  # @schema item: string; minItems: 1
+      - agentmemory.operations.awsprod.gigantic.io
+    # -- Envoy Gateway BackendTrafficPolicy on the HTTPRoute.
+    backendTrafficPolicy:
+      enabled: true
+      # -- Request timeout; 0s disables it (long-lived MCP streams).
+      timeout: 0s
+
+  networkPolicy:
+    enabled: true
+    # -- Namespaces allowed to reach port 3111.
+    ingressNamespaces:  # @schema item: string
+      - envoy-gateway-system
+    # -- Egress HTTPS (443) destinations, for the Gemini API. DNS is always allowed.
+    egressHttpsCidrs:  # @schema item: string
+      - 0.0.0.0/0
+
+  resources:  # @schema $ref: $k8s/_definitions.json#/definitions/io.k8s.api.core.v1.ResourceRequirements
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1536Mi
+
+  podSecurityContext:
+    runAsNonRoot: true  # @schema const: true
+    runAsUser: 1000  # @schema minimum: 1
+    runAsGroup: 1000
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch  # @schema enum: [OnRootMismatch, Always]
+    seccompProfile:
+      type: RuntimeDefault  # @schema enum: [RuntimeDefault, Localhost]
+
+  securityContext:
+    allowPrivilegeEscalation: false  # @schema const: false
+    privileged: false  # @schema const: false
+    runAsNonRoot: true  # @schema const: true
+    runAsUser: 1000  # @schema minimum: 1
+    runAsGroup: 1000
+    readOnlyRootFilesystem: true  # @schema const: true
+    capabilities:
+      drop:  # @schema item: string; minItems: 1
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault  # @schema enum: [RuntimeDefault, Localhost]
+
+  podAnnotations: {}  # @schema additionalProperties: {type: string}
+  podLabels: {}  # @schema additionalProperties: {type: string}
+  nodeSelector: {}  # @schema additionalProperties: {type: string}
+  tolerations: []  # @schema itemRef: $k8s/_definitions.json#/definitions/io.k8s.api.core.v1.Toleration
+  affinity: {}  # @schema $ref: $k8s/_definitions.json#/definitions/io.k8s.api.core.v1.Affinity
+
+# Cartographer (https://github.com/BeppeTemp/cartographer): a git-backed OKF
+# markdown wiki served over MCP. One server, one KB.
+cartographer:
+  # -- Render the cartographer component. The release `cartographer` sets it.
+  enabled: false
+
+  image:
+    registry: ghcr.io
+    # -- Upstream image (third-party, not mirrored by Giant Swarm).
+    name: beppetemp/cartographer
+    # -- Release tag; never `latest`.
+    tag: v0.28.0
+    # -- Optional digest (`sha256:...`), appended as `<tag>@<digest>`.
+    digest: ""
+    pullPolicy: IfNotPresent
+
+  kb:
+    # -- KB name: the role rules, the clone directory and the credential file prefix (`<name>.ssh`).
+    name: gs-memory
+    # -- Git remote cloned at start; every write is pushed to it. Must already hold an OKF KB (scripts/kb-bootstrap.sh).
+    remote: git@github.com:giantswarm/agent-mem-experiments-kb.git
+    # -- Branch this server commits to (`kbs[].branch`); created on first push if missing.
+    # Giant Swarm repos protect the default branch (PR reviews), so writes go to their own branch.
+    # Empty follows the remote's default branch.
+    branch: kb
+
+  # -- Author and committer of writes that carry no `Cartographer-Author` header (`git.identities.default`).
+  # The token id is recorded in the `Cartographer-Token` trailer of every write.
+  gitIdentity: "agent-mem-experiments PoC <noreply@giantswarm.io>"
+
+  auth:
+    # -- Existing Secret with one key per user, `TOKEN_<ID>` (id upper-cased, `-` as `_`).
+    existingSecret: ""
+    # -- Team slugs. Each team gets the map `team-<slug>` and a role `team-<slug>` with rw on it.
+    teams:
+      - honeybadger
+      - bumblebee
+      - cabbage
+      - planeteers
+    # -- Maps every non-admin user writes, besides their team maps.
+    sharedWriteMaps:
+      - topics
+    # -- Token holders. `admin: true` grants everything. Everyone else reads the whole KB and
+    # writes `sharedWriteMaps`, the maps of `teams`, and `writeMaps`.
+    users:  # @schema item: object; itemProperties: {"id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"}, "admin": {"type": "boolean"}, "teams": {"type": "array", "items": {"type": "string"}}, "writeMaps": {"type": "array", "items": {"type": "string"}}}
+      - id: admin
+        admin: true
+      - id: lukasz
+        teams: [honeybadger]
+      - id: dominik
+        teams: [bumblebee]
+      - id: puja
+        teams: [planeteers]
+        writeMaps: [company]
+
+  credentials:
+    # -- Existing Secret mounted as the credentials directory: `default.ssh` (or `<kb>.ssh`),
+    # `known_hosts` with github.com's host keys, and `audit.key` (`openssl rand -hex 32`).
+    existingSecret: ""
+
+  audit:
+    # -- `best_effort` logs a failed append and carries on; `required` refuses calls without the log.
+    mode: best_effort  # @schema enum: [best_effort, required]
+
+  # -- Daily GitHub lookup of the latest release, reported in /health. Renovate tracks the tag instead.
+  updateCheck: false
+
+  ui:
+    # -- Serve the read-only Atlas UI (`/ui/`) and its API (`/api/ui/v1`, token required).
+    enabled: true
+    # -- Route `/ui` and `/api/ui` through the HTTPRoute. Needs `enabled`.
+    exposed: false
+
+  persistence:
+    # -- Size of the data volume (KB clone, index, audit log).
+    size: 5Gi
+    # -- Storage class; empty uses the cluster default.
+    storageClassName: ""
+    # -- Use this claim instead of creating one.
+    existingClaim: ""
+
+  # -- Gateway API HTTPRoute for /mcp, the probes and (optionally) the UI, on gateway.parentRefs.
+  httpRoute:
+    enabled: true
+    hostnames:  # @schema item: string; minItems: 1
+      - cartographer.operations.awsprod.gigantic.io
+    # -- Annotations of the HTTPRoute.
+    annotations: {}  # @schema additionalProperties: {"type": "string"}
+    # -- Envoy Gateway BackendTrafficPolicy on the HTTPRoute.
+    backendTrafficPolicy:
+      enabled: true
+      # -- Request timeout; 0s disables it (reindex and git sync have no fixed bound).
+      timeout: 0s
+
+  networkPolicy:
+    enabled: true
+    # -- Namespaces allowed to reach the app port (the Gateway's Envoy pods).
+    ingressNamespaces:  # @schema item: string
+      - envoy-gateway-system
+    # -- Destinations of the git remote. Narrow to GitHub's `git` ranges
+    # (https://api.github.com/meta) once verified from the cluster.
+    egressCIDRs:  # @schema item: string
+      - 0.0.0.0/0
+    # -- Ports allowed to `egressCIDRs`: git over SSH and HTTPS.
+    egressPorts:  # @schema item: integer
+      - 22
+      - 443
+
+  # -- Container resources.
+  resources:  # @schema $ref: $k8s/_definitions.json#/definitions/io.k8s.api.core.v1.ResourceRequirements
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+  # -- Size limit of the `/tmp` emptyDir (the root filesystem is read-only).
+  tmpSizeLimit: 256Mi
+
+  # -- HTTP drain (10s) plus the KB's pending push (10s), with margin.
+  terminationGracePeriodSeconds: 60
+
+  podAnnotations: {}  # @schema additionalProperties: {"type": "string"}
+  nodeSelector: {}  # @schema additionalProperties: {"type": "string"}
+  tolerations: []  # @schema item: object; itemRef: $k8s/_definitions.json#/definitions/io.k8s.api.core.v1.Toleration
+  affinity: {}  # @schema $ref: $k8s/_definitions.json#/definitions/io.k8s.api.core.v1.Affinity

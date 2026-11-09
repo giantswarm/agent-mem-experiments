@@ -1,0 +1,22 @@
+{{- if .Values.agentmemory.enabled }}
+{{- $route := .Values.agentmemory.httpRoute }}
+{{- if and $route.enabled $route.backendTrafficPolicy.enabled }}
+{{- $ctx := dict "root" $ "component" "agentmemory" }}
+{{- $fullname := include "agent-mem.fullname" $ctx }}
+# Envoy Gateway extension: request timeout for long-lived MCP connections.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "agent-mem.labels" $ctx | nindent 4 }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ $fullname }}
+  timeout:
+    http:
+      requestTimeout: {{ $route.backendTrafficPolicy.timeout | quote }}
+{{- end }}
+{{- end }}

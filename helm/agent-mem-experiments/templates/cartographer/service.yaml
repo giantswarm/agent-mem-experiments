@@ -1,0 +1,17 @@
+{{- if .Values.cartographer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agent-mem.fullname" (dict "root" $ "component" "cartographer") }}
+  labels:
+    {{- include "agent-mem.labels" (dict "root" $ "component" "cartographer") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "agent-mem.selectorLabels" (dict "root" $ "component" "cartographer") | nindent 4 }}
+  ports:
+    - name: http
+      port: 39273
+      targetPort: http
+      protocol: TCP
+{{- end }}
