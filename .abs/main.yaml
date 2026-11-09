@@ -1,0 +1,5 @@
+replace-chart-version-with-git: true
+generate-metadata: true
+chart-dir: ./helm/agent-mem-experiments
+destination: ./build
+helm-template-extra-values: ./helm/agent-mem-experiments/ci/ci-values.yaml
