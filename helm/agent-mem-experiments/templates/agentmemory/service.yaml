@@ -1,0 +1,18 @@
+{{- if .Values.agentmemory.enabled }}
+{{- $ctx := dict "root" $ "component" "agentmemory" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agent-mem.fullname" $ctx }}
+  labels:
+    {{- include "agent-mem.labels" $ctx | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "agent-mem.selectorLabels" $ctx | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.agentmemory.service.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}

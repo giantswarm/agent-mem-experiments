@@ -1,0 +1,82 @@
+{{- if .Values.cartographer.enabled }}
+{{- include "agent-mem.cartographer.validate" . }}
+{{- $c := .Values.cartographer }}
+{{- $kb := $c.kb.name }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agent-mem.fullname" (dict "root" $ "component" "cartographer") }}-config
+  labels:
+    {{- include "agent-mem.labels" (dict "root" $ "component" "cartographer") | nindent 4 }}
+data:
+  config.yaml: |
+    # cartographer serve --config; keys per config.example.yaml of the pinned release.
+    http: ":39273"
+    # A KB subdirectory of the volume: every non-hidden directory under data is
+    # mounted as a KB, and the volume root holds ext4's lost+found.
+    data: /data/kbs
+    credentials_dir: /etc/cartographer-credentials
+    update_check: {{ $c.updateCheck }}
+    web:
+      enabled: {{ $c.ui.enabled }}
+    audit:
+      log: /data/audit/audit.log
+      mode: {{ $c.audit.mode }}
+    git:
+      identities:
+        default: {{ $c.gitIdentity | quote }}
+    kbs:
+      - name: {{ $kb }}
+        remote: {{ $c.kb.remote | quote }}
+        {{- with $c.kb.branch }}
+        branch: {{ . | quote }}
+        {{- end }}
+    auth:
+      mode: "on"
+      roles:
+        - name: reader
+          rules:
+            - kb: {{ $kb }}
+              access: r
+        {{- with $c.auth.sharedWriteMaps }}
+        - name: shared-writer
+          rules:
+            - kb: {{ $kb }}
+              access: rw
+              maps: {{ toJson . }}
+        {{- end }}
+        {{- range $c.auth.teams }}
+        - name: team-{{ . }}
+          rules:
+            - kb: {{ $kb }}
+              access: rw
+              maps: {{ list (include "agent-mem.cartographer.teamMap" .) | toJson }}
+        {{- end }}
+        {{- range $c.auth.users }}
+        {{- if and (not .admin) .writeMaps }}
+        - name: user-{{ .id }}
+          rules:
+            - kb: {{ $kb }}
+              access: rw
+              maps: {{ toJson .writeMaps }}
+        {{- end }}
+        {{- end }}
+      tokens:
+        {{- range $c.auth.users }}
+        - id: {{ .id }}
+          token: ${{ printf "{%s}" (include "agent-mem.cartographer.tokenEnv" .id) }}
+          {{- if not .admin }}
+          {{- $roles := list "reader" }}
+          {{- if $c.auth.sharedWriteMaps }}
+          {{- $roles = append $roles "shared-writer" }}
+          {{- end }}
+          {{- range .teams }}
+          {{- $roles = append $roles (printf "team-%s" .) }}
+          {{- end }}
+          {{- if .writeMaps }}
+          {{- $roles = append $roles (printf "user-%s" .id) }}
+          {{- end }}
+          roles: {{ toJson $roles }}
+          {{- end }}
+        {{- end }}
+{{- end }}
