@@ -6,7 +6,7 @@
 A proof of concept of shared memory for coding agents (Claude Code, Claude Desktop,
 Gemini) across Giant Swarm teams. It runs two candidate servers side by side on the
 `operations` workload cluster of `gazelle` and fills both with the same screened sample
-of [giantswarm/agent-memory](https://github.com/giantswarm/agent-memory) (private):
+of the private `giantswarm/agent-memory` repository:
 
 | Component | What it is | Endpoint |
 |---|---|---|
