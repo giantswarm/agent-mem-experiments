@@ -4,13 +4,13 @@
 apiVersion: v2
 
 # Version of the packaged app
-appVersion: 0.0.1
+appVersion: 0.1.0
 
 # Make sure your name DOES NOT end in "app" or "-app".
 name: agent-mem-experiments
 
 # Please describe what the app provides in a sentence or two.
-description: Please add description
+description: PoC of shared agent memory servers (agentmemory and Cartographer) for Claude Code, Claude Desktop and Gemini. One component per release.
 
 # URL of the GitHub repository that is the source of this Chart.yaml file.
 home: https://github.com/giantswarm/agent-mem-experiments
@@ -21,11 +21,13 @@ home: https://github.com/giantswarm/agent-mem-experiments
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 
 sources:
-- https://github.com/some-org/some-repo
+- https://github.com/giantswarm/agent-mem-experiments
+- https://github.com/rohitg00/agentmemory
+- https://github.com/BeppeTemp/cartographer
 version: 0.0.0-dev
 annotations:
   # Adapt to 'giantswarm' if this application is not to be deployed by customers
-  io.giantswarm.application.audience: all
+  io.giantswarm.application.audience: giantswarm
   # Adapt to 'true' if Giant Swarm takes responsibility for this app where it's deplyed
   io.giantswarm.application.managed: "false"
   # Team owning this app, used through .Chart.Annotations in templates/_helpers.tpl.

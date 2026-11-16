@@ -1,0 +1,159 @@
+{{- if .Values.agentmemory.enabled }}
+{{- $ctx := dict "root" $ "component" "agentmemory" }}
+{{- $am := .Values.agentmemory }}
+{{- $usesGemini := or (eq $am.llmProvider "gemini") (eq $am.embeddingProvider "gemini") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agent-mem.fullname" $ctx }}-runtime
+  labels:
+    {{- include "agent-mem.labels" $ctx | nindent 4 }}
+data:
+  # Foreground start for Kubernetes. Since agentmemory 0.9.31 the CLI starts an
+  # iii Worker Compose project in the background and exits, and binds the REST
+  # port to 127.0.0.1, so the pod runs `iii compose` itself, the way upstream's
+  # deploy/runtime/entrypoint.sh does, but as UID 1000 with no chown and with the
+  # state/http workers baked into the image (no registry download at start).
+  start.sh: |
+    #!/bin/sh
+    set -eu
+    DATA_DIR="${AGENTMEMORY_DATA_DIR:-/data}"
+    WORKERS="{{ $am.runtime.workerBinDir }}"
+    COMPOSE_DIR="$DATA_DIR/compose"
+    umask 077
+    mkdir -p "$HOME" "$COMPOSE_DIR/config" "$DATA_DIR/compose-state" "$DATA_DIR/observability/traces"
+    for w in state http; do
+      mkdir -p "$COMPOSE_DIR/local-workers/$w"
+      printf 'iii: v1\nname: %s\nlanguage: rust\nscripts:\n  start: %s\n' "$w" "$WORKERS/$w" \
+        > "$COMPOSE_DIR/local-workers/$w/iii.worker.yaml"
+    done
+    OBS="$COMPOSE_DIR/config/iii-observability.yaml"
+    if [ ! -f "$OBS" ]; then
+      printf 'id: iii-observability\nname: Observability\ndescription: ""\nschema: {}\nvalue:\n  logs_console_output: false\n  sampling_ratio: 0.1\n  trace_storage:\n    directory: %s/observability/traces\n' "$DATA_DIR" > "$OBS"
+    fi
+    # iii compose writes a lock file next to the manifest, so copy it off the
+    # read-only ConfigMap mount.
+    rm -f "$COMPOSE_DIR/worker-compose.yaml"
+    install -m 0600 /etc/agentmemory/worker-compose.yaml "$COMPOSE_DIR/worker-compose.yaml"
+    export III_COMPOSE_STATE_DIR="$DATA_DIR/compose-state" III_TELEMETRY_ENABLED=false
+    cd "$DATA_DIR"
+    exec iii compose --namespace agentmemory --up --file "$COMPOSE_DIR/worker-compose.yaml"
+
+  # Worker Compose manifest, modelled on what the 0.9.32 CLI generates.
+  # Secrets are not stored here: ${AGENTMEMORY_SECRET} and ${GEMINI_API_KEY}
+  # are interpolated by iii compose from the container environment.
+  worker-compose.yaml: |
+    namespace: agentmemory
+    startup_timeout: 60s
+    stop_timeout: 20s
+    required_default: true
+    engine:
+      url: ws://127.0.0.1:49134
+      workers:
+        configuration:
+          adapter:
+            name: fs
+            config:
+              directory: /data/compose/config
+        iii-worker-manager:
+          host: 127.0.0.1
+          port: 49134
+    containers:
+      state:
+        worker: path:///data/compose/local-workers/state
+        config_name: state
+        restart:
+          condition: on-failure
+          delay: 500ms
+          max_delay: 30s
+          max_attempts: 5
+          window: 60s
+        scripts:
+          run: {{ printf "%s/state" $am.runtime.workerBinDir | quote }}
+        config_override:
+          adapter:
+            {{- if $am.valkey.enabled }}
+            name: redis
+            config:
+              redis_url: redis://127.0.0.1:6379
+            {{- else }}
+            name: kv
+            config:
+              store_method: file_based
+              file_path: /data/state_store.db
+              save_interval_ms: 2000
+            {{- end }}
+      http:
+        worker: path:///data/compose/local-workers/http
+        config_name: http
+        restart:
+          condition: on-failure
+          delay: 500ms
+          max_delay: 30s
+          max_attempts: 5
+          window: 60s
+        scripts:
+          run: {{ printf "%s/http" $am.runtime.workerBinDir | quote }}
+        config_override:
+          host: 0.0.0.0
+          port: 3111
+          default_timeout: 180000
+          cors:
+            allowed_origins:
+              - http://localhost:3111
+              - http://localhost:3113
+              - http://127.0.0.1:3111
+              - http://127.0.0.1:3113
+            allowed_methods: [GET, POST, PUT, DELETE, OPTIONS]
+      agentmemory:
+        worker: {{ printf "path://%s" $am.runtime.packageDir | quote }}
+        start_after: [state, http]
+        startup_timeout: 300s
+        config_name: agentmemory
+        restart:
+          condition: on-failure
+          delay: 500ms
+          max_delay: 30s
+          max_attempts: 5
+          window: 60s
+        scripts:
+          run: {{ printf "%s dist/index.mjs" $am.runtime.nodeBin | quote }}
+        environment:
+          AGENTMEMORY_SECRET: "${AGENTMEMORY_SECRET}"
+          {{- if $am.llmProvider }}
+          AGENTMEMORY_LLM_PROVIDER: {{ $am.llmProvider | quote }}
+          {{- end }}
+          {{- if $usesGemini }}
+          GEMINI_API_KEY: "${GEMINI_API_KEY}"
+          GEMINI_MODEL: {{ $am.gemini.model | quote }}
+          {{- end }}
+          {{- with $am.embeddingProvider }}
+          EMBEDDING_PROVIDER: {{ . | quote }}
+          {{- end }}
+          AGENTMEMORY_AUTO_COMPRESS: {{ $am.autoCompress | quote }}
+          AGENTMEMORY_INJECT_CONTEXT: {{ $am.injectContext | quote }}
+          AGENTMEMORY_TOOLS: {{ $am.tools | quote }}
+          CONSOLIDATION_ENABLED: {{ $am.consolidation | quote }}
+          GRAPH_EXTRACTION_ENABLED: {{ $am.graphExtraction | quote }}
+          {{- if $am.teamId }}
+          TEAM_ID: {{ $am.teamId | quote }}
+          USER_ID: {{ $am.userId | quote }}
+          TEAM_MODE: shared
+          {{- end }}
+          {{- if $am.valkey.enabled }}
+          AGENTMEMORY_STATE_BACKEND: redis
+          AGENTMEMORY_REDIS_URL: redis://127.0.0.1:6379
+          {{- end }}
+          {{- range $am.extraEnv }}
+          {{ .name }}: {{ .value | quote }}
+          {{- end }}
+          HOME: /home/node
+          PATH: {{ list (dir $am.runtime.nodeBin) "/usr/local/bin" "/usr/bin" "/bin" | uniq | join ":" | quote }}
+          AGENTMEMORY_DATA_DIR: /data
+          AGENTMEMORY_RUNTIME_DIR: /data
+          III_ENGINE_PORT: "49134"
+          III_REST_PORT: "3111"
+          III_VIEWER_PORT: "3113"
+          III_TELEMETRY_ENABLED: "false"
+          MALLOC_ARENA_MAX: "2"
+{{- end }}

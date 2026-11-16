@@ -1,14 +1,1177 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "_definitions.json": {
+            "definitions": {
+                "io.k8s.api.core.v1.Affinity": {
+                    "type": "object",
+                    "description": "Affinity is a group of affinity scheduling rules.",
+                    "properties": {
+                        "nodeAffinity": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.NodeAffinity",
+                            "description": "Describes node affinity scheduling rules for the pod."
+                        },
+                        "podAffinity": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.PodAffinity",
+                            "description": "Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s))."
+                        },
+                        "podAntiAffinity": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.PodAntiAffinity",
+                            "description": "Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s))."
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.LocalObjectReference": {
+                    "type": "object",
+                    "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names"
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.NodeAffinity": {
+                    "type": "object",
+                    "description": "Node affinity is a group of node affinity scheduling rules.",
+                    "properties": {
+                        "preferredDuringSchedulingIgnoredDuringExecution": {
+                            "type": "array",
+                            "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.PreferredSchedulingTerm"
+                            }
+                        },
+                        "requiredDuringSchedulingIgnoredDuringExecution": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.NodeSelector",
+                            "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node."
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.NodeSelector": {
+                    "type": "object",
+                    "description": "A node selector represents the union of the results of one or more label queries over a set of nodes; that is, it represents the OR of the selectors represented by the node selector terms.",
+                    "required": [
+                        "nodeSelectorTerms"
+                    ],
+                    "properties": {
+                        "nodeSelectorTerms": {
+                            "type": "array",
+                            "description": "Required. A list of node selector terms. The terms are ORed.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.NodeSelectorTerm"
+                            }
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.NodeSelectorRequirement": {
+                    "type": "object",
+                    "description": "A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
+                    "required": [
+                        "key",
+                        "operator"
+                    ],
+                    "properties": {
+                        "key": {
+                            "type": "string",
+                            "description": "The label key that the selector applies to."
+                        },
+                        "operator": {
+                            "type": "string",
+                            "description": "Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt."
+                        },
+                        "values": {
+                            "type": "array",
+                            "description": "An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.NodeSelectorTerm": {
+                    "type": "object",
+                    "description": "A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.",
+                    "properties": {
+                        "matchExpressions": {
+                            "type": "array",
+                            "description": "A list of node selector requirements by node's labels.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.NodeSelectorRequirement"
+                            }
+                        },
+                        "matchFields": {
+                            "type": "array",
+                            "description": "A list of node selector requirements by node's fields.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.NodeSelectorRequirement"
+                            }
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.PodAffinity": {
+                    "type": "object",
+                    "description": "Pod affinity is a group of inter pod affinity scheduling rules.",
+                    "properties": {
+                        "preferredDuringSchedulingIgnoredDuringExecution": {
+                            "type": "array",
+                            "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.WeightedPodAffinityTerm"
+                            }
+                        },
+                        "requiredDuringSchedulingIgnoredDuringExecution": {
+                            "type": "array",
+                            "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.PodAffinityTerm"
+                            }
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.PodAffinityTerm": {
+                    "type": "object",
+                    "description": "Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> matches that of any node on which a pod of the set of pods is running",
+                    "required": [
+                        "topologyKey"
+                    ],
+                    "properties": {
+                        "labelSelector": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector",
+                            "description": "A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods."
+                        },
+                        "matchLabelKeys": {
+                            "type": "array",
+                            "description": "MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn't set.",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "mismatchLabelKeys": {
+                            "type": "array",
+                            "description": "MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn't set.",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "namespaceSelector": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector",
+                            "description": "A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means \"this pod's namespace\". An empty selector ({}) matches all namespaces."
+                        },
+                        "namespaces": {
+                            "type": "array",
+                            "description": "namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means \"this pod's namespace\".",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "topologyKey": {
+                            "type": "string",
+                            "description": "This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed."
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.PodAntiAffinity": {
+                    "type": "object",
+                    "description": "Pod anti affinity is a group of inter pod anti affinity scheduling rules.",
+                    "properties": {
+                        "preferredDuringSchedulingIgnoredDuringExecution": {
+                            "type": "array",
+                            "description": "The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.WeightedPodAffinityTerm"
+                            }
+                        },
+                        "requiredDuringSchedulingIgnoredDuringExecution": {
+                            "type": "array",
+                            "description": "If the anti-affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the anti-affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.PodAffinityTerm"
+                            }
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.PreferredSchedulingTerm": {
+                    "type": "object",
+                    "description": "An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).",
+                    "required": [
+                        "weight",
+                        "preference"
+                    ],
+                    "properties": {
+                        "preference": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.NodeSelectorTerm",
+                            "description": "A node selector term, associated with the corresponding weight."
+                        },
+                        "weight": {
+                            "type": "integer",
+                            "description": "Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.",
+                            "format": "int32"
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.ResourceClaim": {
+                    "type": "object",
+                    "description": "ResourceClaim references one entry in PodSpec.ResourceClaims.",
+                    "required": [
+                        "name"
+                    ],
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container."
+                        },
+                        "request": {
+                            "type": "string",
+                            "description": "Request is the name chosen for a request in the referenced claim. If empty, everything from the claim is made available, otherwise only the result of this request."
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.ResourceRequirements": {
+                    "type": "object",
+                    "description": "ResourceRequirements describes the compute resource requirements.",
+                    "properties": {
+                        "claims": {
+                            "type": "array",
+                            "description": "Claims lists the names of resources, defined in spec.resourceClaims, that are used by this container.\n\nThis is an alpha field and requires enabling the DynamicResourceAllocation feature gate.\n\nThis field is immutable. It can only be set for containers.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.ResourceClaim"
+                            }
+                        },
+                        "limits": {
+                            "type": "object",
+                            "description": "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                            "additionalProperties": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.apimachinery.pkg.api.resource.Quantity"
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                            "additionalProperties": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.apimachinery.pkg.api.resource.Quantity"
+                            }
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.Toleration": {
+                    "type": "object",
+                    "description": "The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.",
+                    "properties": {
+                        "effect": {
+                            "type": "string",
+                            "description": "Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute."
+                        },
+                        "key": {
+                            "type": "string",
+                            "description": "Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys."
+                        },
+                        "operator": {
+                            "type": "string",
+                            "description": "Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category."
+                        },
+                        "tolerationSeconds": {
+                            "type": "integer",
+                            "description": "TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.",
+                            "format": "int64"
+                        },
+                        "value": {
+                            "type": "string",
+                            "description": "Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string."
+                        }
+                    }
+                },
+                "io.k8s.api.core.v1.WeightedPodAffinityTerm": {
+                    "type": "object",
+                    "description": "The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)",
+                    "required": [
+                        "weight",
+                        "podAffinityTerm"
+                    ],
+                    "properties": {
+                        "podAffinityTerm": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.PodAffinityTerm",
+                            "description": "Required. A pod affinity term, associated with the corresponding weight."
+                        },
+                        "weight": {
+                            "type": "integer",
+                            "description": "weight associated with matching the corresponding podAffinityTerm, in the range 1-100.",
+                            "format": "int32"
+                        }
+                    }
+                },
+                "io.k8s.apimachinery.pkg.api.resource.Quantity": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ]
+                },
+                "io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector": {
+                    "type": "object",
+                    "description": "A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.",
+                    "properties": {
+                        "matchExpressions": {
+                            "type": "array",
+                            "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                            "items": {
+                                "$ref": "#/$defs/_definitions.json/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelectorRequirement"
+                            }
+                        },
+                        "matchLabels": {
+                            "type": "object",
+                            "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelectorRequirement": {
+                    "type": "object",
+                    "description": "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
+                    "required": [
+                        "key",
+                        "operator"
+                    ],
+                    "properties": {
+                        "key": {
+                            "type": "string",
+                            "description": "key is the label key that the selector applies to."
+                        },
+                        "operator": {
+                            "type": "string",
+                            "description": "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
+                        },
+                        "values": {
+                            "type": "array",
+                            "description": "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
     "type": "object",
     "additionalProperties": false,
     "properties": {
+        "agentmemory": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "affinity": {
+                    "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.Affinity",
+                    "type": "object",
+                    "unevaluatedProperties": false
+                },
+                "autoCompress": {
+                    "type": "boolean"
+                },
+                "consolidation": {
+                    "type": "boolean"
+                },
+                "embeddingProvider": {
+                    "type": "string",
+                    "description": "Embedding provider: gemini (768 dims), or \"\" for BM25 + graph only.",
+                    "enum": [
+                        "",
+                        "gemini"
+                    ]
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Render the agentmemory component."
+                },
+                "extraEnv": {
+                    "type": "array",
+                    "description": "Extra plain env for the agentmemory worker, written into the compose manifest. Secrets do not belong here.",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "value"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "gemini": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "model": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "graphExtraction": {
+                    "type": "boolean"
+                },
+                "httpRoute": {
+                    "type": "object",
+                    "description": "Gateway API HTTPRoute for /agentmemory on gateway.parentRefs.",
+                    "additionalProperties": false,
+                    "properties": {
+                        "backendTrafficPolicy": {
+                            "type": "object",
+                            "description": "Envoy Gateway BackendTrafficPolicy on the HTTPRoute.",
+                            "additionalProperties": false,
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "timeout": {
+                                    "type": "string",
+                                    "description": "Request timeout; 0s disables it (long-lived MCP streams)."
+                                }
+                            }
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "hostnames": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1
+                        }
+                    }
+                },
+                "image": {
+                    "type": "object",
+                    "description": "agentmemory image, built from the root Dockerfile.",
+                    "additionalProperties": false,
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "pullPolicy": {
+                            "type": "string",
+                            "enum": [
+                                "Always",
+                                "IfNotPresent",
+                                "Never"
+                            ]
+                        },
+                        "registry": {
+                            "type": "string"
+                        },
+                        "tag": {
+                            "type": "string",
+                            "description": "Defaults to the chart's appVersion."
+                        }
+                    }
+                },
+                "imagePullSecrets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.LocalObjectReference"
+                    }
+                },
+                "injectContext": {
+                    "type": "boolean"
+                },
+                "llmProvider": {
+                    "type": "string",
+                    "description": "LLM provider: gemini, or \"\" for none (no summaries, compression, consolidation). A key alone does not enable a provider since 0.9.32.",
+                    "enum": [
+                        "",
+                        "gemini"
+                    ]
+                },
+                "networkPolicy": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "egressHttpsCidrs": {
+                            "type": "array",
+                            "description": "Egress HTTPS (443) destinations, for the Gemini API. DNS is always allowed.",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "ingressNamespaces": {
+                            "type": "array",
+                            "description": "Namespaces allowed to reach port 3111.",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "nodeSelector": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "persistence": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "accessMode": {
+                            "type": "string",
+                            "enum": [
+                                "ReadWriteOnce",
+                                "ReadWriteOncePod"
+                            ]
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "existingClaim": {
+                            "type": "string",
+                            "description": "Use an existing PVC instead of creating one."
+                        },
+                        "size": {
+                            "type": "string"
+                        },
+                        "storageClassName": {
+                            "type": "string",
+                            "description": "\"\" uses the cluster default (gp3)."
+                        }
+                    }
+                },
+                "podAnnotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "podLabels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "podSecurityContext": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "fsGroup": {
+                            "type": "integer"
+                        },
+                        "fsGroupChangePolicy": {
+                            "type": "string",
+                            "enum": [
+                                "OnRootMismatch",
+                                "Always"
+                            ]
+                        },
+                        "runAsGroup": {
+                            "type": "integer"
+                        },
+                        "runAsNonRoot": {
+                            "const": true
+                        },
+                        "runAsUser": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "seccompProfile": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "RuntimeDefault",
+                                        "Localhost"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "replicaCount": {
+                    "type": "integer",
+                    "description": "Single writer on a ReadWriteOnce volume: 0 or 1.",
+                    "maximum": 1,
+                    "minimum": 0
+                },
+                "resources": {
+                    "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.ResourceRequirements",
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "memory": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "cpu": {
+                                    "type": "string"
+                                },
+                                "memory": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "unevaluatedProperties": false
+                },
+                "runtime": {
+                    "type": "object",
+                    "description": "Paths inside the image (root Dockerfile).",
+                    "additionalProperties": false,
+                    "properties": {
+                        "nodeBin": {
+                            "type": "string"
+                        },
+                        "packageDir": {
+                            "type": "string"
+                        },
+                        "workerBinDir": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "secret": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "agentmemorySecret": {
+                            "type": "string"
+                        },
+                        "create": {
+                            "type": "boolean",
+                            "description": "Render the Secret from the values below. CI and tests only."
+                        },
+                        "existingSecret": {
+                            "type": "string",
+                            "description": "Name of an existing Secret (production; created from SOPS in workload-clusters-fleet)."
+                        },
+                        "geminiApiKey": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "securityContext": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "allowPrivilegeEscalation": {
+                            "const": false
+                        },
+                        "capabilities": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "drop": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "minItems": 1
+                                }
+                            }
+                        },
+                        "privileged": {
+                            "const": false
+                        },
+                        "readOnlyRootFilesystem": {
+                            "const": true
+                        },
+                        "runAsGroup": {
+                            "type": "integer"
+                        },
+                        "runAsNonRoot": {
+                            "const": true
+                        },
+                        "runAsUser": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "seccompProfile": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "RuntimeDefault",
+                                        "Localhost"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "service": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "port": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "teamId": {
+                    "type": "string",
+                    "description": "Team scope (server-wide; every share is recorded as userId). \"\" disables team mode."
+                },
+                "tolerations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.Toleration"
+                    }
+                },
+                "tools": {
+                    "type": "string",
+                    "description": "MCP tool surface for every client: all or core (8 tools). Decided on the server.",
+                    "enum": [
+                        "all",
+                        "core"
+                    ]
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "valkey": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "image": {
+                            "type": "object",
+                            "description": "Third-party image (Docker Hub), not built or mirrored by Giant Swarm. Pin the full patch version; 8.1-alpine is a moving tag.",
+                            "additionalProperties": false,
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "pullPolicy": {
+                                    "type": "string",
+                                    "enum": [
+                                        "Always",
+                                        "IfNotPresent",
+                                        "Never"
+                                    ]
+                                },
+                                "registry": {
+                                    "type": "string"
+                                },
+                                "tag": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "resources": {
+                            "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.ResourceRequirements",
+                            "type": "object",
+                            "properties": {
+                                "limits": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "memory": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "requests": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string"
+                                        },
+                                        "memory": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "unevaluatedProperties": false
+                        },
+                        "securityContext": {
+                            "type": "object",
+                            "description": "Runs as the image's valkey user (UID 999).",
+                            "additionalProperties": false,
+                            "properties": {
+                                "allowPrivilegeEscalation": {
+                                    "const": false
+                                },
+                                "capabilities": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "drop": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 1
+                                        }
+                                    }
+                                },
+                                "privileged": {
+                                    "const": false
+                                },
+                                "readOnlyRootFilesystem": {
+                                    "const": true
+                                },
+                                "runAsGroup": {
+                                    "type": "integer"
+                                },
+                                "runAsNonRoot": {
+                                    "const": true
+                                },
+                                "runAsUser": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                "seccompProfile": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "RuntimeDefault",
+                                                "Localhost"
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "baseDomain": {
             "type": "string"
         },
         "bootstrapMode": {
             "type": "object",
             "additionalProperties": true
+        },
+        "cartographer": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "affinity": {
+                    "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.Affinity",
+                    "type": "object",
+                    "unevaluatedProperties": false
+                },
+                "audit": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "mode": {
+                            "type": "string",
+                            "description": "`best_effort` logs a failed append and carries on; `required` refuses calls without the log.",
+                            "enum": [
+                                "best_effort",
+                                "required"
+                            ]
+                        }
+                    }
+                },
+                "auth": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "existingSecret": {
+                            "type": "string",
+                            "description": "Existing Secret with one key per user, `TOKEN_<ID>` (id upper-cased, `-` as `_`)."
+                        },
+                        "sharedWriteMaps": {
+                            "type": "array",
+                            "description": "Maps every non-admin user writes, besides their team maps.",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "teams": {
+                            "type": "array",
+                            "description": "Team slugs. Each team gets the map `team-<slug>` and a role `team-<slug>` with rw on it.",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "users": {
+                            "type": "array",
+                            "description": "Token holders. `admin: true` grants everything. Everyone else reads the whole KB and writes `sharedWriteMaps`, the maps of `teams`, and `writeMaps`.",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "admin": {
+                                        "type": "boolean"
+                                    },
+                                    "id": {
+                                        "type": "string",
+                                        "pattern": "^[a-z][a-z0-9-]*$"
+                                    },
+                                    "teams": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "writeMaps": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "credentials": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "existingSecret": {
+                            "type": "string",
+                            "description": "Existing Secret mounted as the credentials directory: `default.ssh` (or `<kb>.ssh`), `known_hosts` with github.com's host keys, and `audit.key` (`openssl rand -hex 32`)."
+                        }
+                    }
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Render the cartographer component. The release `cartographer` sets it."
+                },
+                "gitIdentity": {
+                    "type": "string",
+                    "description": "Author and committer of writes that carry no `Cartographer-Author` header (`git.identities.default`). The token id is recorded in the `Cartographer-Token` trailer of every write."
+                },
+                "httpRoute": {
+                    "type": "object",
+                    "description": "Gateway API HTTPRoute for /mcp, the probes and (optionally) the UI, on gateway.parentRefs.",
+                    "additionalProperties": false,
+                    "properties": {
+                        "annotations": {
+                            "type": "object",
+                            "description": "Annotations of the HTTPRoute.",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        },
+                        "backendTrafficPolicy": {
+                            "type": "object",
+                            "description": "Envoy Gateway BackendTrafficPolicy on the HTTPRoute.",
+                            "additionalProperties": false,
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "timeout": {
+                                    "type": "string",
+                                    "description": "Request timeout; 0s disables it (reindex and git sync have no fixed bound)."
+                                }
+                            }
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "hostnames": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1
+                        }
+                    }
+                },
+                "image": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "digest": {
+                            "type": "string",
+                            "description": "Optional digest (`sha256:...`), appended as `<tag>@<digest>`."
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "Upstream image (third-party, not mirrored by Giant Swarm)."
+                        },
+                        "pullPolicy": {
+                            "type": "string"
+                        },
+                        "registry": {
+                            "type": "string"
+                        },
+                        "tag": {
+                            "type": "string",
+                            "description": "Release tag; never `latest`."
+                        }
+                    }
+                },
+                "kb": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch this server commits to (`kbs[].branch`); created on first push if missing. Giant Swarm repos protect the default branch (PR reviews), so writes go to their own branch. Empty follows the remote's default branch."
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "KB name: the role rules, the clone directory and the credential file prefix (`<name>.ssh`)."
+                        },
+                        "remote": {
+                            "type": "string",
+                            "description": "Git remote cloned at start; every write is pushed to it. Must already hold an OKF KB (scripts/kb-bootstrap.sh)."
+                        }
+                    }
+                },
+                "networkPolicy": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "egressCIDRs": {
+                            "type": "array",
+                            "description": "Destinations of the git remote. Narrow to GitHub's `git` ranges (https://api.github.com/meta) once verified from the cluster.",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "egressPorts": {
+                            "type": "array",
+                            "description": "Ports allowed to `egressCIDRs`: git over SSH and HTTPS.",
+                            "items": {
+                                "type": "integer"
+                            }
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "ingressNamespaces": {
+                            "type": "array",
+                            "description": "Namespaces allowed to reach the app port (the Gateway's Envoy pods).",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "nodeSelector": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "persistence": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "existingClaim": {
+                            "type": "string",
+                            "description": "Use this claim instead of creating one."
+                        },
+                        "size": {
+                            "type": "string",
+                            "description": "Size of the data volume (KB clone, index, audit log)."
+                        },
+                        "storageClassName": {
+                            "type": "string",
+                            "description": "Storage class; empty uses the cluster default."
+                        }
+                    }
+                },
+                "podAnnotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "resources": {
+                    "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.ResourceRequirements",
+                    "type": "object",
+                    "description": "Container resources.",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "memory": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "cpu": {
+                                    "type": "string"
+                                },
+                                "memory": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "unevaluatedProperties": false
+                },
+                "terminationGracePeriodSeconds": {
+                    "type": "integer",
+                    "description": "HTTP drain (10s) plus the KB's pending push (10s), with margin."
+                },
+                "tmpSizeLimit": {
+                    "type": "string",
+                    "description": "Size limit of the `/tmp` emptyDir (the root filesystem is read-only)."
+                },
+                "tolerations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/_definitions.json/definitions/io.k8s.api.core.v1.Toleration",
+                        "type": "object",
+                        "unevaluatedProperties": false
+                    }
+                },
+                "ui": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Serve the read-only Atlas UI (`/ui/`) and its API (`/api/ui/v1`, token required)."
+                        },
+                        "exposed": {
+                            "type": "boolean",
+                            "description": "Route `/ui` and `/api/ui` through the HTTPRoute. Needs `enabled`."
+                        }
+                    }
+                },
+                "updateCheck": {
+                    "type": "boolean",
+                    "description": "Daily GitHub lookup of the latest release, reported in /health. Renovate tracks the tag instead."
+                }
+            }
         },
         "chartOperator": {
             "type": "object",
@@ -37,6 +1200,43 @@
         "externalDNSIP": {
             "type": "string"
         },
+        "gateway": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "parentRefs": {
+                    "type": "array",
+                    "description": "Gateway API parent references for the components' HTTPRoutes.",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "group": {
+                                "type": "string"
+                            },
+                            "kind": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "namespace": {
+                                "type": "string"
+                            },
+                            "port": {
+                                "type": "integer"
+                            },
+                            "sectionName": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "gcpProject": {
             "type": "string"
         },
@@ -58,32 +1258,11 @@
             "type": "object",
             "additionalProperties": true
         },
-        "image": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "tag": {
-                    "type": "string"
-                }
-            }
-        },
         "managementCluster": {
             "type": "string"
         },
         "provider": {
             "type": "string"
-        },
-        "registry": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-                "domain": {
-                    "type": "string"
-                }
-            }
         },
         "subscriptionID": {
             "type": "string"

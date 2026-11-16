@@ -1,0 +1,141 @@
+{{- if .Values.cartographer.enabled }}
+{{- include "agent-mem.cartographer.validate" . }}
+{{- $c := .Values.cartographer }}
+{{- $fullname := include "agent-mem.fullname" (dict "root" $ "component" "cartographer") }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "agent-mem.labels" (dict "root" $ "component" "cartographer") | nindent 4 }}
+spec:
+  # One server is the only writer of its working copy: no replica value, and
+  # Recreate so an update never runs two pods on the volume.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "agent-mem.selectorLabels" (dict "root" $ "component" "cartographer") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # The config is read once at start.
+        checksum/config: {{ include (print $.Template.BasePath "/cartographer/configmap.yaml") . | sha256sum }}
+        {{- with $c.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "agent-mem.labels" (dict "root" $ "component" "cartographer") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "agent-mem.fullname" (dict "root" $ "component" "cartographer") }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      # HTTP drain (10s) plus the KB's pending push (10s), with margin.
+      terminationGracePeriodSeconds: {{ $c.terminationGracePeriodSeconds }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        # Secret files reach a non-root user as root:<fsGroup> 0440.
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cartographer
+          image: {{ include "agent-mem.cartographer.image" . | quote }}
+          imagePullPolicy: {{ $c.image.pullPolicy }}
+          args:
+            - serve
+            - --config=/etc/cartographer/config.yaml
+          env:
+            {{- range $c.auth.users }}
+            {{- $env := include "agent-mem.cartographer.tokenEnv" .id }}
+            - name: {{ $env }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $c.auth.existingSecret | quote }}
+                  key: {{ $env }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 39273
+              protocol: TCP
+          # /health is public and 200 whenever the process answers; the KB is
+          # cloned after the port is bound.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # /ready answers 401 without a token; the /health body carries "ready".
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - wget -q -O - http://127.0.0.1:39273/health | grep -q '"ready":true'
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- with $c.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+          volumeMounts:
+            - name: config
+              mountPath: /etc/cartographer
+              readOnly: true
+            - name: credentials
+              mountPath: /etc/cartographer-credentials
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $fullname }}-config
+        - name: credentials
+          secret:
+            secretName: {{ $c.credentials.existingSecret | quote }}
+            defaultMode: 0440
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-data" $fullname) $c.persistence.existingClaim }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ $c.tmpSizeLimit }}
+      {{- with $c.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $c.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $c.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,52 @@
+{{- if .Values.cartographer.enabled }}
+{{- $r := .Values.cartographer.httpRoute }}
+{{- if $r.enabled }}
+{{- $fullname := include "agent-mem.fullname" (dict "root" $ "component" "cartographer") }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "agent-mem.labels" (dict "root" $ "component" "cartographer") | nindent 4 }}
+  {{- with $r.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- required "gateway.parentRefs is required" .Values.gateway.parentRefs | toYaml | nindent 4 }}
+  hostnames:
+    {{- required "cartographer.httpRoute.hostnames is required" $r.hostnames | toYaml | nindent 4 }}
+  rules:
+    # MCP (/mcp, /mcp/routed, /mcp/<kb>), probes, and RFC 9728 metadata.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp
+        - path:
+            type: Exact
+            value: /health
+        - path:
+            type: Exact
+            value: /ready
+        - path:
+            type: Exact
+            value: /.well-known/oauth-protected-resource
+      backendRefs:
+        - name: {{ $fullname }}
+          port: 39273
+    {{- if .Values.cartographer.ui.exposed }}
+    # Atlas UI: the static bundle is public, its API needs a token.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /ui
+        - path:
+            type: PathPrefix
+            value: /api/ui
+      backendRefs:
+        - name: {{ $fullname }}
+          port: 39273
+    {{- end }}
+{{- end }}
+{{- end }}
