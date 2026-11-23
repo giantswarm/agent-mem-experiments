@@ -10,7 +10,7 @@ of the private `giantswarm/agent-memory` repository:
 
 | Component | What it is | Endpoint |
 |---|---|---|
-| [agentmemory](https://github.com/rohitg00/agentmemory) 0.9.32 | Memory server: captures sessions through hooks, recalls with hybrid search (BM25 + Gemini embeddings + graph), team feed | `https://agentmemory.operations.awsprod.gigantic.io/agentmemory` |
+| [agentmemory](https://github.com/rohitg00/agentmemory) 0.9.32 | Memory server: captures sessions through hooks, recalls with hybrid search (BM25 + OpenAI embeddings + graph), team feed | `https://agentmemory.operations.awsprod.gigantic.io/agentmemory` |
 | [Cartographer](https://github.com/BeppeTemp/cartographer) v0.28.0 | Git-backed OKF markdown wiki served over MCP, with per-map write roles | `https://cartographer.operations.awsprod.gigantic.io/mcp/routed` |
 
 This is an experiment, not a supported app. No company content lives in this public
@@ -32,7 +32,7 @@ the image tag). [workload-clusters-fleet](https://github.com/giantswarm/workload
 installs it twice on `gazelle/operations` with Flux, each release enabling one component:
 
 - release `agentmemory`, `agentmemory.enabled: true`, Secret `agentmemory`
-  (`AGENTMEMORY_SECRET`, `GEMINI_API_KEY`);
+  (`AGENTMEMORY_SECRET`, `OPENAI_API_KEY`);
 - release `cartographer`, `cartographer.enabled: true`, Secrets `cartographer-tokens`
   (`TOKEN_<ID>` per user) and `cartographer-credentials` (`default.ssh`, `known_hosts`,
   `audit.key`).
@@ -48,7 +48,8 @@ filesystem, one replica with `Recreate` on a 5 Gi volume.
 
 The pod runs `iii compose` in the foreground with the `state` and `http` workers baked into
 the image (no worker downloads at start) and Valkey as a native sidecar on loopback.
-Gemini provides the LLM (`gemini-3.7-flash`) and 768-dimension embeddings. One server-wide
+OpenAI provides the LLM (`gpt-5.6-luna`) and 1536-dimension embeddings
+(`text-embedding-3-small`); Gemini is still selectable in the values. One server-wide
 team scope (`TEAM_ID=gs-ai-test`). One shared bearer secret for everyone: agentmemory has no
 per-user tokens; `agentId` tells writers apart.
 

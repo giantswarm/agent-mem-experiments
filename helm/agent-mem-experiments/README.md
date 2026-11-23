@@ -22,8 +22,10 @@ PoC of shared agent memory servers (agentmemory and Cartographer) for Claude Cod
 | agentmemory.replicaCount | int | `1` | Single writer on a ReadWriteOnce volume: 0 or 1. |
 | agentmemory.teamId | string | `"gs-ai-test"` | Team scope (server-wide; every share is recorded as userId). "" disables team mode. |
 | agentmemory.userId | string | `"shared"` |  |
-| agentmemory.llmProvider | string | `"gemini"` | LLM provider: gemini, or "" for none (no summaries, compression, consolidation). A key alone does not enable a provider since 0.9.32. |
-| agentmemory.embeddingProvider | string | `"gemini"` | Embedding provider: gemini (768 dims), or "" for BM25 + graph only. |
+| agentmemory.llmProvider | string | `"openai"` | LLM provider: openai, gemini, or "" for none (no summaries, compression, consolidation). A key alone does not enable a provider since 0.9.32. |
+| agentmemory.embeddingProvider | string | `"openai"` | Embedding provider: openai, gemini (768 dims), or "" for BM25 + graph only. |
+| agentmemory.openai.model | string | `"gpt-5.6-luna"` | LLM model (OPENAI_MODEL); agentmemory 0.9.32's default. |
+| agentmemory.openai.embeddingModel | string | `"text-embedding-3-small"` | Embedding model (OPENAI_EMBEDDING_MODEL); text-embedding-3-small has 1536 dims. Changing it changes the vector size: memories embedded before are skipped by vector search. |
 | agentmemory.gemini.model | string | `"gemini-3.7-flash"` |  |
 | agentmemory.autoCompress | bool | `true` |  |
 | agentmemory.injectContext | bool | `true` |  |
@@ -34,6 +36,7 @@ PoC of shared agent memory servers (agentmemory and Cartographer) for Claude Cod
 | agentmemory.secret.existingSecret | string | `""` | Name of an existing Secret (production; created from SOPS in workload-clusters-fleet). |
 | agentmemory.secret.create | bool | `false` | Render the Secret from the values below. CI and tests only. |
 | agentmemory.secret.agentmemorySecret | string | `""` |  |
+| agentmemory.secret.openaiApiKey | string | `""` |  |
 | agentmemory.secret.geminiApiKey | string | `""` |  |
 | agentmemory.runtime | object | `{"nodeBin":"/usr/local/bin/node","packageDir":"/opt/agentmemory/node_modules/@agentmemory/agentmemory","workerBinDir":"/opt/iii-workers"}` | Paths inside the image (root Dockerfile). |
 | agentmemory.valkey.enabled | bool | `true` |  |
@@ -53,7 +56,7 @@ PoC of shared agent memory servers (agentmemory and Cartographer) for Claude Cod
 | agentmemory.httpRoute.backendTrafficPolicy.timeout | string | `"0s"` | Request timeout; 0s disables it (long-lived MCP streams). |
 | agentmemory.networkPolicy.enabled | bool | `true` |  |
 | agentmemory.networkPolicy.ingressNamespaces | list | `["envoy-gateway-system"]` | Namespaces allowed to reach port 3111. |
-| agentmemory.networkPolicy.egressHttpsCidrs | list | `["0.0.0.0/0"]` | Egress HTTPS (443) destinations, for the Gemini API. DNS is always allowed. |
+| agentmemory.networkPolicy.egressHttpsCidrs | list | `["0.0.0.0/0"]` | Egress HTTPS (443) destinations, for the LLM and embedding APIs. DNS is always allowed. |
 | agentmemory.resources.requests.cpu | string | `"250m"` |  |
 | agentmemory.resources.requests.memory | string | `"512Mi"` |  |
 | agentmemory.resources.limits.memory | string | `"1536Mi"` |  |
