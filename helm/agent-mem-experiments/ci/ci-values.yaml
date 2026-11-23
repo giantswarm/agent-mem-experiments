@@ -5,7 +5,7 @@ agentmemory:
   secret:
     create: true
     agentmemorySecret: ci-dummy-agentmemory-secret
-    geminiApiKey: ci-dummy-gemini-api-key
+    openaiApiKey: ci-dummy-openai-api-key
 cartographer:
   enabled: true
   auth:
