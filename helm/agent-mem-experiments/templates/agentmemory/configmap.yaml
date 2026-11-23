@@ -2,6 +2,7 @@
 {{- $ctx := dict "root" $ "component" "agentmemory" }}
 {{- $am := .Values.agentmemory }}
 {{- $usesGemini := or (eq $am.llmProvider "gemini") (eq $am.embeddingProvider "gemini") }}
+{{- $usesOpenAI := or (eq $am.llmProvider "openai") (eq $am.embeddingProvider "openai") }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -40,7 +41,7 @@ data:
     exec iii compose --namespace agentmemory --up --file "$COMPOSE_DIR/worker-compose.yaml"
 
   # Worker Compose manifest, modelled on what the 0.9.32 CLI generates.
-  # Secrets are not stored here: ${AGENTMEMORY_SECRET} and ${GEMINI_API_KEY}
+  # Secrets are not stored here: ${AGENTMEMORY_SECRET}, ${GEMINI_API_KEY} and ${OPENAI_API_KEY}
   # are interpolated by iii compose from the container environment.
   worker-compose.yaml: |
     namespace: agentmemory
@@ -126,6 +127,15 @@ data:
           {{- if $usesGemini }}
           GEMINI_API_KEY: "${GEMINI_API_KEY}"
           GEMINI_MODEL: {{ $am.gemini.model | quote }}
+          {{- end }}
+          {{- if $usesOpenAI }}
+          OPENAI_API_KEY: "${OPENAI_API_KEY}"
+          {{- end }}
+          {{- if eq $am.llmProvider "openai" }}
+          OPENAI_MODEL: {{ $am.openai.model | quote }}
+          {{- end }}
+          {{- if eq $am.embeddingProvider "openai" }}
+          OPENAI_EMBEDDING_MODEL: {{ $am.openai.embeddingModel | quote }}
           {{- end }}
           {{- with $am.embeddingProvider }}
           EMBEDDING_PROVIDER: {{ . | quote }}

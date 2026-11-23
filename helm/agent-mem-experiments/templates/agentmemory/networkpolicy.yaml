@@ -34,7 +34,7 @@ spec:
         - port: 53
           protocol: TCP
     {{- with $np.egressHttpsCidrs }}
-    # Gemini API.
+    # LLM and embedding APIs (OpenAI, Gemini).
     - ports:
         - port: 443
           protocol: TCP

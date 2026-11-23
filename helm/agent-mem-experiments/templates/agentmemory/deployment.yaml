@@ -7,6 +7,7 @@
 {{- end }}
 {{- $secretName := $am.secret.existingSecret | default $fullname }}
 {{- $usesGemini := or (eq $am.llmProvider "gemini") (eq $am.embeddingProvider "gemini") }}
+{{- $usesOpenAI := or (eq $am.llmProvider "openai") (eq $am.embeddingProvider "openai") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -117,6 +118,13 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: GEMINI_API_KEY
+            {{- end }}
+            {{- if $usesOpenAI }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: OPENAI_API_KEY
             {{- end }}
           ports:
             - name: http
