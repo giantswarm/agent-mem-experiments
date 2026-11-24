@@ -38,11 +38,17 @@ agentmemory:
   # -- Team scope (server-wide; every share is recorded as userId). "" disables team mode.
   teamId: gs-ai-test
   userId: shared
-  # -- LLM provider: gemini, or "" for none (no summaries, compression, consolidation).
+  # -- LLM provider: openai, gemini, or "" for none (no summaries, compression, consolidation).
   # A key alone does not enable a provider since 0.9.32.
-  llmProvider: gemini  # @schema enum: ["", gemini]
-  # -- Embedding provider: gemini (768 dims), or "" for BM25 + graph only.
-  embeddingProvider: gemini  # @schema enum: ["", gemini]
+  llmProvider: openai  # @schema enum: ["", openai, gemini]
+  # -- Embedding provider: openai, gemini (768 dims), or "" for BM25 + graph only.
+  embeddingProvider: openai  # @schema enum: ["", openai, gemini]
+  openai:
+    # -- LLM model (OPENAI_MODEL); agentmemory 0.9.32's default.
+    model: gpt-5.6-luna
+    # -- Embedding model (OPENAI_EMBEDDING_MODEL); text-embedding-3-small has 1536 dims.
+    # Changing it changes the vector size: memories embedded before are skipped by vector search.
+    embeddingModel: text-embedding-3-small
   gemini:
     model: gemini-3.7-flash
   autoCompress: true
@@ -56,13 +62,15 @@ agentmemory:
   # Secrets do not belong here.
   extraEnv: []
 
-  # Secret with AGENTMEMORY_SECRET (REST/MCP bearer token) and GEMINI_API_KEY.
+  # Secret with AGENTMEMORY_SECRET (REST/MCP bearer token), plus OPENAI_API_KEY and/or
+  # GEMINI_API_KEY for the providers in use.
   secret:
     # -- Name of an existing Secret (production; created from SOPS in workload-clusters-fleet).
     existingSecret: ""
     # -- Render the Secret from the values below. CI and tests only.
     create: false
     agentmemorySecret: ""
+    openaiApiKey: ""
     geminiApiKey: ""
 
   # -- Paths inside the image (root Dockerfile).
@@ -130,7 +138,7 @@ agentmemory:
     # -- Namespaces allowed to reach port 3111.
     ingressNamespaces:  # @schema item: string
       - envoy-gateway-system
-    # -- Egress HTTPS (443) destinations, for the Gemini API. DNS is always allowed.
+    # -- Egress HTTPS (443) destinations, for the LLM and embedding APIs. DNS is always allowed.
     egressHttpsCidrs:  # @schema item: string
       - 0.0.0.0/0
 

@@ -378,9 +378,10 @@
                 },
                 "embeddingProvider": {
                     "type": "string",
-                    "description": "Embedding provider: gemini (768 dims), or \"\" for BM25 + graph only.",
+                    "description": "Embedding provider: openai, gemini (768 dims), or \"\" for BM25 + graph only.",
                     "enum": [
                         "",
+                        "openai",
                         "gemini"
                     ]
                 },
@@ -488,9 +489,10 @@
                 },
                 "llmProvider": {
                     "type": "string",
-                    "description": "LLM provider: gemini, or \"\" for none (no summaries, compression, consolidation). A key alone does not enable a provider since 0.9.32.",
+                    "description": "LLM provider: openai, gemini, or \"\" for none (no summaries, compression, consolidation). A key alone does not enable a provider since 0.9.32.",
                     "enum": [
                         "",
+                        "openai",
                         "gemini"
                     ]
                 },
@@ -500,7 +502,7 @@
                     "properties": {
                         "egressHttpsCidrs": {
                             "type": "array",
-                            "description": "Egress HTTPS (443) destinations, for the Gemini API. DNS is always allowed.",
+                            "description": "Egress HTTPS (443) destinations, for the LLM and embedding APIs. DNS is always allowed.",
                             "items": {
                                 "type": "string"
                             }
@@ -521,6 +523,20 @@
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
+                    }
+                },
+                "openai": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "embeddingModel": {
+                            "type": "string",
+                            "description": "Embedding model (OPENAI_EMBEDDING_MODEL); text-embedding-3-small has 1536 dims. Changing it changes the vector size: memories embedded before are skipped by vector search."
+                        },
+                        "model": {
+                            "type": "string",
+                            "description": "LLM model (OPENAI_MODEL); agentmemory 0.9.32's default."
+                        }
                     }
                 },
                 "persistence": {
@@ -667,6 +683,9 @@
                             "description": "Name of an existing Secret (production; created from SOPS in workload-clusters-fleet)."
                         },
                         "geminiApiKey": {
+                            "type": "string"
+                        },
+                        "openaiApiKey": {
                             "type": "string"
                         }
                     }
