@@ -30,7 +30,7 @@ ARG III_VERSION=0.25.0
 ARG WORKERS_BUILD=76a005d77a9c9f12067104ea5eb9f860e8590b5d
 
 # Downloads and checks only, so it runs on the build platform without emulation.
-FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS fetch
+FROM --platform=$BUILDPLATFORM node:26-bookworm-slim AS fetch
 ARG TARGETARCH
 ARG III_VERSION
 ARG WORKERS_BUILD
@@ -58,7 +58,7 @@ RUN set -eu; \
   tar xzf iii.tgz -C bin; tar xzf state.tgz -C workers; tar xzf http.tgz -C workers; \
   chmod 0755 bin/iii workers/state workers/http
 
-FROM node:22-bookworm-slim
+FROM node:26-bookworm-slim
 ARG AGENTMEMORY_VERSION
 ARG III_VERSION
 
